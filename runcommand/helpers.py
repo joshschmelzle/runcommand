@@ -2,16 +2,18 @@
 
 # standard library imports
 import argparse
+import inspect
 import ipaddress
 import logging
 import logging.config
+import sys
 import textwrap
 
 # app imports
 from .__version__ import __author__, __version__
 
 
-def setup_logger(args) -> logging.Logger:
+def setup_logger(args: argparse.Namespace) -> logging.Logger:
     if args.logging:
         if args.logging == "debug":
             logging_level = logging.DEBUG
@@ -50,6 +52,7 @@ def setup_parser() -> argparse:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=textwrap.dedent(
             """
+exploratory project to run a command across a list of Aruba controllers and save the responses locally
             """
         ),
         epilog=f"Made with Python by {__author__}",
@@ -75,13 +78,37 @@ def setup_parser() -> argparse:
         help="runs encrypt disable before desired command",
         action="store_true",
     )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version="%(prog)s {v}".format(v=__version__),
+    )
     parser.set_defaults(syn=False, decrypt=False)
     return parser
 
 
-def is_valid_ipv4_address(ip_address):
+def is_valid_ipv4_address(ip_address: str) -> bool:
     try:
         ipaddress.ip_address(ip_address)
     except ValueError:
+        return False
+    return True
+
+
+def validateinput(args) -> bool:
+    log = logging.getLogger(inspect.stack()[0][3])
+    if not validate_cmd(args.cmd):
+        log.error(f"invalid command {args.cmd}")
+        sys.exit(-1)
+    return True
+
+
+def validate_cmd(cmd: str) -> bool:
+    if cmd.strip() == "":
+        return False
+    if len(cmd.split(" ")) == 1:
+        return False
+    if not isinstance(cmd, str):
         return False
     return True

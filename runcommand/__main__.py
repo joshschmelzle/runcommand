@@ -26,7 +26,15 @@ from . import helpers
 
 
 class Worker(threading.Thread):
-    def __init__(self, ip_address, command, decrypt, username, password, counter):
+    def __init__(
+        self,
+        ip_address: str,
+        command: str,
+        decrypt: bool,
+        username: str,
+        password: str,
+        counter: int,
+    ):
         threading.Thread.__init__(self)
         self.thread_id = counter
         self.ip_address = ip_address
@@ -58,7 +66,14 @@ class Worker(threading.Thread):
         )
 
 
-def run_cmd(ip_address, command, decrypt, username, password, thread_id):
+def run_cmd(
+    ip_address: str,
+    command: str,
+    decrypt: bool,
+    username: str,
+    password: str,
+    thread_id: int,
+):
     log = logging.getLogger(inspect.stack()[0][3])
     try:
         log.info(
@@ -92,14 +107,14 @@ def run_cmd(ip_address, command, decrypt, username, password, thread_id):
 def getresults(args):
     log = logging.getLogger(inspect.stack()[0][3])
 
-    i = 1
+    counter = 1
     controllers = []
 
     iplist = args.iplist
     command = args.cmd
     decrypt = args.decrypt
 
-    if validateinput(args):
+    if helpers.validateinput(args):
         with open(iplist) as file:
             for line in file:
                 line = line.strip()
@@ -120,32 +135,18 @@ def getresults(args):
             password = getpass.getpass(prompt="password: ")
 
             for ip_address in controllers:
-                worker = Worker(ip_address, command, decrypt, username, password, i)
+                worker = Worker(
+                    ip_address, command, decrypt, username, password, counter
+                )
                 worker.start()
                 if args.syn:
                     worker.join()
-                i += 1
+                counter += 1
 
 
-def validateinput(args) -> bool:
-    log = logging.getLogger(inspect.stack()[0][3])
-    if not validate_cmd(args.cmd):
-        log.error(f"invalid command {args.cmd}")
-        sys.exit(-1)
-    return True
-
-
-def validate_cmd(cmd: str) -> bool:
-    if cmd.strip() == "":
-        return False
-    if len(cmd.split(" ")) == 1:
-        return False
-    if not isinstance(cmd, str):
-        return False
-    return True
-
-
-def build_output_file(results, hostname, command, ip_address, thread_id):
+def build_output_file(
+    results: str, hostname: str, command: str, ip_address: str, thread_id: int
+):
     """
     - naming convention: [name]-[ip]-[command]-[time].cfg
     - write to same directory
