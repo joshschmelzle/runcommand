@@ -6,6 +6,7 @@ import inspect
 import ipaddress
 import logging
 import logging.config
+import os
 import sys
 import textwrap
 
@@ -59,13 +60,21 @@ exploratory project to run a command across a list of Aruba controllers and save
         fromfile_prefix_chars="2",
     )
     parser.add_argument(
-        "--logging",
+        "-logging",
         help="change logging output",
         nargs="?",
         choices=("debug", "warning"),
     )
-    parser.add_argument("cmd", help="command you want to run across controllers")
-    parser.add_argument("iplist", help="file containing IPv4 addresses of controllers")
+    group_cmd = parser.add_mutually_exclusive_group(required=True)
+    group_cmd.add_argument("-cmd", help="command to run")
+    group_cmd.add_argument("-cmdlist", help="file containing commands to run")
+
+    group_ip = parser.add_mutually_exclusive_group(required=True)
+    group_ip.add_argument("-ip", help="IPv4 address of controller")
+    group_ip.add_argument(
+        "-iplist", help="file containing IPv4 addresses of controllers"
+    )
+
     parser.add_argument(
         "--syn",
         dest="syn",
@@ -98,9 +107,14 @@ def is_valid_ipv4_address(ip_address: str) -> bool:
 
 def validateinput(args) -> bool:
     log = logging.getLogger(inspect.stack()[0][3])
-    if not validate_cmd(args.cmd):
-        log.error(f"invalid command {args.cmd}")
-        sys.exit(-1)
+    if args.cmd:
+        if not validate_cmd(args.cmd):
+            log.error(f"invalid command {args.cmd}")
+            sys.exit(-1)
+    if args.cmdlist:
+        if not os.path.isfile(args.cmdlist):
+            log.error(f"command list file {args.cmdlist} doesn't exist")
+            sys.exit(-1)
     return True
 
 
