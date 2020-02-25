@@ -1,6 +1,6 @@
 # runcommand
 
-script runs command(s) across a single or list of Aruba wireless controllers. 
+script can run a command or list of commands across a controller or list of controllers. netmiko platform is currently tied to  `"aruba_os"`.
 
 - iplist arg expects a file containing one IPv4 address per line.
 - cmdlist arg expects a file containing one command per line.
