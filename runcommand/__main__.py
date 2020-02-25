@@ -28,6 +28,7 @@ from . import helpers
 class Worker(threading.Thread):
     def __init__(
         self,
+        platform: str,
         ip_address: str,
         command: str,
         decrypt: bool,
@@ -37,6 +38,7 @@ class Worker(threading.Thread):
     ):
         threading.Thread.__init__(self)
         self.thread_id = counter
+        self.platform = platform
         self.ip_address = ip_address
         self.command = command
         self.decrypt = decrypt
@@ -52,6 +54,7 @@ class Worker(threading.Thread):
             )
         )
         run_cmd(
+            self.platform,
             self.ip_address,
             self.command,
             self.decrypt,
@@ -67,8 +70,9 @@ class Worker(threading.Thread):
 
 
 def run_cmd(
+    platform: str,
     ip_address: str,
-    command: str,
+    command_set: str,
     decrypt: bool,
     username: str,
     password: str,
@@ -81,7 +85,7 @@ def run_cmd(
         )
 
         wlc = netmiko.ConnectHandler(
-            device_type="aruba_os", ip=ip_address, username=username, password=password
+            device_type=platform, ip=ip_address, username=username, password=password
         )
         if decrypt:
             wlc.send_command("encrypt disable")
@@ -89,13 +93,15 @@ def run_cmd(
         hostname = wlc.send_command("show hostname")
         hostname = hostname.split(" ")[2].strip()
 
-        results = wlc.send_command(command)
+        results = []
+        for command in command_set:
+            results.append(wlc.send_command(command))
 
-        if isinstance(results, str):
+        if isinstance(results, list):
             log.info(
                 "thread {0} - retrieved results from {1}".format(thread_id, hostname)
             )
-            build_output_file(results, hostname, command, ip_address, thread_id)
+            build_output_file(results, hostname, ip_address, thread_id)
     except netmiko.ssh_exception.NetMikoTimeoutException as ex:
         log.error("{0}.".format(ex))
         sys.exit(-1)
@@ -109,19 +115,34 @@ def getresults(args):
 
     counter = 1
     controllers = []
+    command_set = []
 
     iplist = args.iplist
-    command = args.cmd
-    decrypt = args.decrypt
+    cmdlist = args.cmdlist
 
-    if helpers.validateinput(args):
-        with open(iplist) as file:
+    if cmdlist:
+        with open(cmdlist) as file:
             for line in file:
                 line = line.strip()
                 if line == "":
                     continue
-                if helpers.is_valid_ipv4_address(line):
-                    controllers.append(line)
+                command_set.append(line)
+    else:
+        command_set.append(args.cmd)
+
+    decrypt = args.decrypt
+
+    if helpers.validateinput(args):
+        if iplist:
+            with open(iplist) as file:
+                for line in file:
+                    line = line.strip()
+                    if line == "":
+                        continue
+                    if helpers.is_valid_ipv4_address(line):
+                        controllers.append(line)
+        else:
+            controllers.append(args.ip)
 
         log.info(f"controllers: {controllers}")
 
@@ -136,7 +157,13 @@ def getresults(args):
 
             for ip_address in controllers:
                 worker = Worker(
-                    ip_address, command, decrypt, username, password, counter
+                    "aruba_os",
+                    ip_address,
+                    command_set,
+                    decrypt,
+                    username,
+                    password,
+                    counter,
                 )
                 worker.start()
                 if args.syn:
@@ -144,9 +171,7 @@ def getresults(args):
                 counter += 1
 
 
-def build_output_file(
-    results: str, hostname: str, command: str, ip_address: str, thread_id: int
-):
+def build_output_file(results: list, hostname: str, ip_address: str, thread_id: int):
     """
     - naming convention: [name]-[ip]-[command]-[time].cfg
     - write to same directory
@@ -154,21 +179,15 @@ def build_output_file(
     log = logging.getLogger(inspect.stack()[0][3])
     curtime = time.strftime("%Y%m%dt%H%M")
     output_filename = (
-        hostname
-        + "-"
-        + ip_address
-        + "-"
-        + command.replace(" ", "")
-        + "-"
-        + curtime
-        + ".txt"
+        "runcommand-" + hostname + "-" + ip_address + "-" + curtime + ".txt"
     )
     log.info(f"thread {thread_id} - writing results to {output_filename}")
 
     out_file = open(output_filename, "w")
-    lines = results.splitlines()
-    for line in lines:
-        out_file.write(line + "\n")
+    for result in results:
+        lines = result.splitlines()
+        for line in lines:
+            out_file.write(line + "\n")
     out_file.close()
 
 
