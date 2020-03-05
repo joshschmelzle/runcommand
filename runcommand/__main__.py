@@ -95,8 +95,10 @@ def run_cmd(
 
         results = []
         for command in command_set:
-            results.append(f"# command: {command}")
-            results.append(wlc.send_command(command))
+            results.append(f"\n# command: {command}\n\n")
+            results.append("```")
+            results.append(wlc.send_command(command).strip())
+            results.append("```")
 
         if isinstance(results, list):
             log.info(
@@ -180,7 +182,7 @@ def build_output_file(results: list, hostname: str, ip_address: str, thread_id: 
     log = logging.getLogger(inspect.stack()[0][3])
     curtime = time.strftime("%Y%m%dt%H%M")
     output_filename = (
-        "runcommand-" + hostname + "-" + ip_address + "-" + curtime + ".txt"
+        "runcommand-" + hostname + "-" + ip_address + "-" + curtime + ".md"
     )
     log.info(f"thread {thread_id} - writing results to {output_filename}")
 
