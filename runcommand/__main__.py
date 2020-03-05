@@ -95,6 +95,7 @@ def run_cmd(
 
         results = []
         for command in command_set:
+            results.append(f"# command: {command}")
             results.append(wlc.send_command(command))
 
         if isinstance(results, list):
