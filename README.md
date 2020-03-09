@@ -1,6 +1,6 @@
 # runcommand
 
-script can run a command or list of commands across a controller or list of controllers. netmiko platform is currently tied to  `"aruba_os"`.
+script can run a command or list of commands across a controller or list of controllers. please note that the netmiko platform is currently tied to ArubaOS only (`"aruba_os"`).
 
 - iplist arg expects a file containing one IPv4 address per line.
 - cmdlist arg expects a file containing one command per line.
